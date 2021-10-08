@@ -1,0 +1,68 @@
+trigger:
+- master
+
+pool:
+  name: Default
+
+variables:
+  - group: terraform-lab-group
+  - name: init-command-line-arguments
+    value: '"-backend-config"="storage_account_name=$(sa-tfstates)"
+            "-backend-config"="container_name=$(cn-tfstates)" 
+            "-backend-config"="key=$(terraform-state-file)"
+            "-backend-config"="access_key=$(access-key-tfstates)"'
+  - name: plan-apply-command-line-arguments
+    value: '-var "node_location"="$(node_location)"
+            -var "resource_prefix"="$(resource_prefix)"
+            -var "Environment"="$(Environment)"
+            -var "node_count"="$(node_count)"
+            -var "admin_username"="$(admin_username)"
+            -var "admin_password"="$(admin_password)"'
+
+
+steps:
+- script: echo This the Terraform Lab pipeline
+  displayName: 'Run a one-line script'
+
+
+- task: TerraformInstaller@0
+  inputs:
+    terraformVersion: 'latest'
+
+
+- task: TerraformCLI@0
+  displayName: init
+  inputs:
+    provider: 'azurerm'
+    command: 'init'
+    commandOptions: $(init-command-line-arguments)
+
+- task: TerraformCLI@0
+  displayName: 'terraform plan'
+  inputs:
+      command: plan
+      environmentServiceName: $(terraform-lab-sc)
+      publishPlanResults: 'tf_lab_plan'
+      # Pass command line arguments to terraform
+      commandOptions: $(plan-apply-command-line-arguments)
+
+- task: TerraformCLI@0
+  displayName: 'terraform apply'
+  inputs:
+      command: apply
+      environmentServiceName: $(terraform-lab-sc)
+      # Pass command line arguments to terraform
+      commandOptions: $(plan-apply-command-line-arguments)
+
+- task: TerraformCLI@0
+  displayName: 'terraform output'
+  inputs:
+      command: output
+
+
+- script: |
+    echo Add other tasks to build, test, and deploy your project.
+    echo See https://aka.ms/yaml
+    printf End of pipeline
+    printf "%s\n" "$(date)"
+  displayName: 'Run a multi-line script'
